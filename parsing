@@ -1,0 +1,62 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+import xgboost as gb
+import matplotlib as plt
+import numpy as np
+
+
+df_train = pd.read_csv("c:\\Users\\vovot\\Downloads\\df_train.csv")
+
+feature_names = ['latitude', 'longitude', 'area', 'area_kitchen', 'rooms_num', 'has_balcony']
+X = df_train[feature_names]
+y = df_train['price']
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+D_train = gb.DMatrix(X_train, label=y_train, feature_names=feature_names)
+D_test = gb.DMatrix(X_test, label=y_test, feature_names=feature_names)
+
+
+param = {
+    'eta': 0.3,
+    'max_depth': 3,
+    'objective': 'reg:squarederror'  # Подходит для регрессии
+}
+
+steps = 20
+
+
+model = gb.train(param, D_train, steps)
+
+
+y_pred = model.predict(D_test)
+
+r2 = r2_score(y_test, y_pred)
+
+
+print(f"Mean Squared Error (MSE): {np.mean((y_test - y_pred) ** 2)}")
+print(f"Mean Absolute Error (MAE): {np.mean(abs(y_test - y_pred))}")
+print(f"r^2:{r2}")
+
+
+
+def predict_price(latitude, longitude, area, area_kitchen, rooms_num, has_balcony):
+    input_data = pd.DataFrame([[latitude, longitude, area, area_kitchen, rooms_num, has_balcony]], 
+                              columns=feature_names)  # Добавляем имена колонок!
+    D_input = gb.DMatrix(input_data, feature_names=feature_names)  # Добавляем feature_names!
+    predicted_price = model.predict(D_input)
+    return predicted_price[0]
+
+latitude = 43.25  
+longitude = 76.95  
+area = 110  
+area_kitchen = 12  
+rooms_num = 3 
+has_balcony = 1  
+
+predicted_price = predict_price(latitude, longitude, area, area_kitchen, rooms_num, has_balcony)
+print(f'Предсказанная цена: {predicted_price:.2f} KZT')
+gb.plot_tree(model, num_trees=2)
